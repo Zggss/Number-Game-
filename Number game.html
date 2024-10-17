@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Player vs Bot</title>    
+    <style>        
+        /* General body and layout */
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-image: url('https://images.unsplash.com/photo-1516910915410-05f54e8a17f5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxNDg1NzZ8MHwxfGFsbHwxfHx8fHx8fHwxNjExNDEyMjE4&ixlib=rb-1.2.1&q=80&w=1080');
+            background-size: cover;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            margin: 0;
+            position: relative;
+        }
+
+        h1 {
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .game-container {
+            margin: 20px auto;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0px 0px 25px rgba(0, 0, 0, 0.2);
+            display: none; /* Initially hidden */
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 12px;
+            margin: 10px 0;
+            width: 100%;
+            box-sizing: border-box;
+            border-radius: 5px;
+            border: 2px solid #2980b9;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus {
+            border-color: #6dd5fa;
+        }
+
+        button {
+            padding: 12px 25px;
+            background-color: #2980b9;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        button:hover {
+            background-color: #6dd5fa;
+            transform: scale(1.05);
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 15px;
+            background-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.1);
+            display: none; /* Initially hidden */
+        }
+
+        .safe {
+            color: green;
+            font-weight: bold;
+        }
+
+        .eliminated {
+            color: red;
+            font-weight: bold;
+        }
+
+        /* Loading animation */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 999;
+        }
+
+        .loader {
+            border: 12px solid #f3f3f3;
+            border-top: 12px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1.5s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        .game-name {
+            font-size: 28px;
+            color: #2980b9;
+            font-weight: bold;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 600px) {
+            .game-container {
+                width: 95%;
+            }
+            button {
+                font-size: 14px;
+            }
+        }
+
+        /* Difficulty buttons */
+        .difficulty-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .difficulty-button {
+            padding: 10px;
+            background-color: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .difficulty-button:hover {
+            background-color: #6dd5fa;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading screen -->
+    <div id="loading">
+        <div class="loader"></div>
+        <div class="game-name">Number Guessing Game</div>
+    </div>
+
+    <h1>Number Game: Player vs Bot</h1>
+    <div class="game-container" id="difficulty-container">
+        <h2>Select Difficulty</h2>
+        <div class="difficulty-container">
+            <button class="difficulty-button" onclick="selectDifficulty('easy')">Hard(1-5)</button>
+            <button class="difficulty-button" onclick="selectDifficulty('medium')">Medium (1-10)</button>
+            <button class="difficulty-button" onclick="selectDifficulty('hard')">Easy (1-20)</button>
+        </div>
+    </div>
+
+    <div class="game-container" id="gameFormContainer" style="display:none;">
+        <form id="gameForm">
+            <label for="playerName">Player Name:</label><br>
+            <input type="text" id="playerName" name="playerName" required><br><br>
+
+            <label for="playerNumber">Pick a number:</label><br>
+            <input type="number" id="playerNumber" name="playerNumber" required><br><br>
+
+            <button type="button" onclick="playGame()">Submit</button>
+        </form>
+    </div>
+
+    <div class="result" id="result"></div>
+
+    <script>
+        // Hide the loading animation after 3 seconds
+        window.onload = function() {
+            setTimeout(function() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('difficulty-container').style.display = 'block';
+            }, 3000);
+        };
+
+        let numberRange;
+
+        // Function to handle difficulty selection
+        function selectDifficulty(difficulty) {
+            document.getElementById('difficulty-container').style.display = 'none';
+            document.getElementById('gameFormContainer').style.display = 'block';
+
+            if (difficulty === 'easy') {
+                numberRange = 5;
+            } else if (difficulty === 'medium') {
+                numberRange = 10;
+            } else if (difficulty === 'hard') {
+                numberRange = 20;
+            }
+
+            document.getElementById('playerNumber').setAttribute('max', numberRange);
+        }
+
+        function playGame() {
+            // Get player's name and number
+            var playerName = document.getElementById('playerName').value;
+            var playerNumber = parseInt(document.getElementById('playerNumber').value);
+
+            // Validate if player's number is within range
+            if (playerNumber < 1 || playerNumber > numberRange) {
+                alert("Please enter a number between 1 and " + numberRange);
+                return;
+            }
+
+            // Bot chooses a random number based on difficulty
+            var botNumber = Math.floor(Math.random() * numberRange) + 1;
+
+            // Create result message
+            var resultMessage = "Player " + playerName + " picked: " + playerNumber + "<br>";
+            resultMessage += "Bot picked: " + botNumber + "<br>";
+
+            var resultDiv = document.getElementById('result');
+
+            // Check if player is eliminated
+            if (playerNumber === botNumber) {
+                resultMessage += "<h2 class='eliminated'>You've been eliminated! Bot chose the same number.</h2>";
+                resultDiv.classList.remove('safe');
+                resultDiv.classList.add('eliminated');
+            } else {
+                resultMessage += "<h2 class='safe'>You're safe! Bot chose a different number.</h2>";
+                resultDiv.classList.remove('eliminated');
+                resultDiv.classList.add('safe');
+            }
+
+            // Display the result with animation
+            resultDiv.innerHTML = resultMessage;
+            resultDiv.style.display = 'block';
+        }
+    </script>
+
+</body>
+</html>
